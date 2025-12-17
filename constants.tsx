@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UnitType, FoodItem } from './types';
+import { UnitType, FoodItem, UserProfile } from './types';
 
 export const COMMON_FOODS: Partial<FoodItem>[] = [
   { name: 'Egg', calories: 70, protein: 6, carbs: 0, fats: 5, unit: UnitType.PIECE },
@@ -15,13 +15,19 @@ export const COMMON_FOODS: Partial<FoodItem>[] = [
   { name: 'Beef Portion', calories: 250, protein: 26, carbs: 0, fats: 15, unit: UnitType.PORTION }
 ];
 
-export const INITIAL_PROFILE = {
+export const INITIAL_PROFILE: UserProfile = {
+  onboarded: false,
+  age: 25,
+  gender: 'Male',
+  height: 175,
   weight: 75,
+  activityLevel: 'Moderately Active',
+  goal: 'Maintain',
   targetCalories: 2200,
   targetProtein: 150,
   targetCarbs: 250,
   targetFats: 70,
   isPremium: false,
   credits: 3,
-  unitSystem: 'kg' as const
+  unitSystem: 'kg'
 };

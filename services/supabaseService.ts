@@ -5,7 +5,7 @@ import { Meal, Workout, UserProfile } from '../types';
 // --- SET YOUR CREDENTIALS HERE ---
 const SUPABASE_URL = 'https://vhfifrdyotzguwjpxmie.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZmlmcmR5b3R6Z3V3anB4bWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5ODY2NDcsImV4cCI6MjA4MTU2MjY0N30.tQ07Qa2lSAjwt8ZEjcxTTJWxsnf4_HYUKv5z54oHOik';
-const DEFAULT_USER_ID = 'user-123'; // Unique ID for your data
+const DEFAULT_USER_ID = 'user-123';
 // --------------------------------
 
 let client: SupabaseClient | null = null;
@@ -36,7 +36,13 @@ export const syncProfile = async (profile: UserProfile) => {
       .from('profiles')
       .upsert({ 
         id: DEFAULT_USER_ID,
+        onboarded: profile.onboarded,
+        age: profile.age,
+        gender: profile.gender,
+        height: profile.height,
         weight: profile.weight,
+        activity_level: profile.activityLevel,
+        goal: profile.goal,
         target_calories: profile.targetCalories,
         target_protein: profile.targetProtein,
         target_carbs: profile.targetCarbs,
@@ -86,7 +92,6 @@ export const syncWorkouts = async (workouts: Workout[]) => {
       type: w.type,
       duration: w.duration,
       intensity: w.intensity,
-      // Fix: Property 'estimated_burn' does not exist on type 'Workout'. Using 'estimatedBurn' instead.
       estimated_burn: w.estimatedBurn
     }));
     
@@ -109,7 +114,22 @@ export const fetchAllData = async () => {
     ]);
 
     return {
-      profile: profileRes.data,
+      profile: profileRes.data ? {
+        onboarded: profileRes.data.onboarded,
+        age: profileRes.data.age,
+        gender: profileRes.data.gender,
+        height: profileRes.data.height,
+        weight: profileRes.data.weight,
+        activityLevel: profileRes.data.activity_level,
+        goal: profileRes.data.goal,
+        targetCalories: profileRes.data.target_calories,
+        targetProtein: profileRes.data.target_protein,
+        targetCarbs: profileRes.data.target_carbs,
+        targetFats: profileRes.data.target_fats,
+        isPremium: profileRes.data.is_premium,
+        credits: profileRes.data.credits,
+        unitSystem: profileRes.data.unit_system
+      } : null,
       meals: mealsRes.data?.map(m => ({
         ...m,
         timestamp: new Date(m.timestamp).getTime(),
