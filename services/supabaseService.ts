@@ -11,7 +11,6 @@ const DEFAULT_USER_ID = 'user-123'; // Unique ID for your data
 let client: SupabaseClient | null = null;
 
 export const isConfigured = () => {
-  // Check if placeholders have been replaced with real values
   return (
     SUPABASE_URL.startsWith('https://') && 
     SUPABASE_ANON_KEY.length > 50
@@ -19,89 +18,114 @@ export const isConfigured = () => {
 };
 
 export const initSupabase = () => {
-  if (isConfigured()) {
-    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    return client;
+  if (isConfigured() && !client) {
+    try {
+      client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (e) {
+      console.error("Failed to initialize Supabase client", e);
+    }
   }
-  return null;
+  return client;
 };
 
 export const syncProfile = async (profile: UserProfile) => {
-  if (!client) return;
-  const { error } = await client
-    .from('profiles')
-    .upsert({ 
-      id: DEFAULT_USER_ID,
-      weight: profile.weight,
-      target_calories: profile.targetCalories,
-      target_protein: profile.targetProtein,
-      target_carbs: profile.targetCarbs,
-      target_fats: profile.targetFats,
-      is_premium: profile.isPremium,
-      credits: profile.credits,
-      unit_system: profile.unitSystem,
-      updated_at: new Date().toISOString()
-    });
-  if (error) console.error('Supabase Profile Sync Error:', error);
+  const supabase = initSupabase();
+  if (!supabase) return;
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ 
+        id: DEFAULT_USER_ID,
+        weight: profile.weight,
+        target_calories: profile.targetCalories,
+        target_protein: profile.targetProtein,
+        target_carbs: profile.targetCarbs,
+        target_fats: profile.targetFats,
+        is_premium: profile.isPremium,
+        credits: profile.credits,
+        unit_system: profile.unitSystem,
+        updated_at: new Date().toISOString()
+      });
+    if (error) console.error('Supabase Profile Sync Error:', error);
+  } catch (e) {
+    console.error('Supabase Profile Sync Exception:', e);
+  }
 };
 
 export const syncMeals = async (meals: Meal[]) => {
-  if (!client) return;
-  const payload = meals.map(m => ({
-    id: m.id,
-    user_id: DEFAULT_USER_ID,
-    timestamp: new Date(m.timestamp).toISOString(),
-    name: m.name,
-    foods: m.foods,
-    total_calories: m.totalCalories,
-    total_protein: m.totalProtein,
-    total_carbs: m.totalCarbs,
-    total_fats: m.totalFats
-  }));
-  
-  const { error } = await client.from('meals').upsert(payload);
-  if (error) console.error('Supabase Meals Sync Error:', error);
+  const supabase = initSupabase();
+  if (!supabase) return;
+  try {
+    const payload = meals.map(m => ({
+      id: m.id,
+      user_id: DEFAULT_USER_ID,
+      timestamp: new Date(m.timestamp).toISOString(),
+      name: m.name,
+      foods: m.foods,
+      total_calories: m.totalCalories,
+      total_protein: m.totalProtein,
+      total_carbs: m.totalCarbs,
+      total_fats: m.totalFats
+    }));
+    
+    const { error } = await supabase.from('meals').upsert(payload);
+    if (error) console.error('Supabase Meals Sync Error:', error);
+  } catch (e) {
+    console.error('Supabase Meals Sync Exception:', e);
+  }
 };
 
 export const syncWorkouts = async (workouts: Workout[]) => {
-  if (!client) return;
-  const payload = workouts.map(w => ({
-    id: w.id,
-    user_id: DEFAULT_USER_ID,
-    timestamp: new Date(w.timestamp).toISOString(),
-    type: w.type,
-    duration: w.duration,
-    intensity: w.intensity,
-    estimated_burn: w.estimatedBurn
-  }));
-  
-  const { error } = await client.from('workouts').upsert(payload);
-  if (error) console.error('Supabase Workouts Sync Error:', error);
+  const supabase = initSupabase();
+  if (!supabase) return;
+  try {
+    const payload = workouts.map(w => ({
+      id: w.id,
+      user_id: DEFAULT_USER_ID,
+      timestamp: new Date(w.timestamp).toISOString(),
+      type: w.type,
+      duration: w.duration,
+      intensity: w.intensity,
+      // Fix: Property 'estimated_burn' does not exist on type 'Workout'. Using 'estimatedBurn' instead.
+      estimated_burn: w.estimatedBurn
+    }));
+    
+    const { error } = await supabase.from('workouts').upsert(payload);
+    if (error) console.error('Supabase Workouts Sync Error:', error);
+  } catch (e) {
+    console.error('Supabase Workouts Sync Exception:', e);
+  }
 };
 
 export const fetchAllData = async () => {
-  if (!client) return null;
+  const supabase = initSupabase();
+  if (!supabase) return null;
   
-  const [profileRes, mealsRes, workoutsRes] = await Promise.all([
-    client.from('profiles').select('*').eq('id', DEFAULT_USER_ID).single(),
-    client.from('meals').select('*').eq('user_id', DEFAULT_USER_ID).order('timestamp', { ascending: false }),
-    client.from('workouts').select('*').eq('user_id', DEFAULT_USER_ID).order('timestamp', { ascending: false })
-  ]);
+  try {
+    const [profileRes, mealsRes, workoutsRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', DEFAULT_USER_ID).maybeSingle(),
+      supabase.from('meals').select('*').eq('user_id', DEFAULT_USER_ID).order('timestamp', { ascending: false }),
+      supabase.from('workouts').select('*').eq('user_id', DEFAULT_USER_ID).order('timestamp', { ascending: false })
+    ]);
 
-  return {
-    profile: profileRes.data,
-    meals: mealsRes.data?.map(m => ({
-      ...m,
-      timestamp: new Date(m.timestamp).getTime(),
-      totalCalories: m.total_calories,
-      totalProtein: m.total_protein,
-      totalCarbs: m.total_carbs,
-      totalFats: m.total_fats
-    })),
-    workouts: workoutsRes.data?.map(w => ({
-      ...w,
-      timestamp: new Date(w.timestamp).getTime(),
-      estimatedBurn: w.estimated_burn
-    }))
-  };
+    return {
+      profile: profileRes.data,
+      meals: mealsRes.data?.map(m => ({
+        ...m,
+        timestamp: new Date(m.timestamp).getTime(),
+        totalCalories: m.total_calories,
+        totalProtein: m.total_protein,
+        totalCarbs: m.total_carbs,
+        totalFats: m.total_fats
+      })),
+      workouts: workoutsRes.data?.map(w => ({
+        ...w,
+        timestamp: new Date(w.timestamp).getTime(),
+        estimatedBurn: w.estimated_burn
+      }))
+    };
+  } catch (e) {
+    console.error('Supabase Fetch Exception:', e);
+    return null;
+  }
 };

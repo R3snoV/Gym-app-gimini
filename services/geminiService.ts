@@ -2,19 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Meal, FoodItem, UnitType } from "../types";
 
+// Initialize the GoogleGenAI client using the API key from environment variables.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const scanMealPhoto = async (base64Image: string): Promise<Partial<FoodItem>[]> => {
+  // Use generateContent directly as per the latest SDK guidelines.
+  // Updated contents to use the recommended { parts: [...] } object structure.
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: [
-      {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: "Identify the foods in this image and estimate their portions using these smart units: piece(s), slice(s), bowl(s), portion(s), cup(s). Return estimated calories, protein, carbs, and fats for each item. Be conservative with estimates." }
-        ]
-      }
-    ],
+    contents: {
+      parts: [
+        { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+        { text: "Identify the foods in this image and estimate their portions using these smart units: piece(s), slice(s), bowl(s), portion(s), cup(s). Return estimated calories, protein, carbs, and fats for each item. Be conservative with estimates." }
+      ]
+    },
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -37,6 +38,7 @@ export const scanMealPhoto = async (base64Image: string): Promise<Partial<FoodIt
   });
 
   try {
+    // Correctly accessing the generated text using the .text property as per guidelines.
     return JSON.parse(response.text || "[]");
   } catch (e) {
     console.error("Failed to parse Gemini response", e);
@@ -51,10 +53,12 @@ export const getSmartInsights = async (history: { meals: Meal[], workouts: any[]
     
     Provide 1 or 2 short, encouraging, human-friendly insights about their consistency, macro intake, or calorie balance. Do not give medical advice. Keep it under 40 words total.`;
 
+  // Standard text generation call using the recommended model and prompt structure.
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt
   });
 
+  // Accessing the text response directly as a property.
   return response.text || "Keep up the great work on your journey!";
 };
